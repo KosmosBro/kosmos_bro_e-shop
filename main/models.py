@@ -57,3 +57,79 @@ class User(AbstractBaseUser, PermissionsMixin):
     def save(self, *args, **kwargs):
         super(User, self).save(*args, **kwargs)
         return self
+
+
+class Product(models.Model):
+    title = models.CharField(max_length=50, verbose_name='Название продукта')
+    description = models.CharField(max_length=150, verbose_name='Описание продукта')
+    picture = models.ImageField(upload_to='images/', blank=True, null=True, verbose_name="Картинка продукта",
+                                max_length=900)
+    creation_date = models.DateTimeField(null=True, verbose_name='Дата создания продукта')
+    price = models.IntegerField(verbose_name="Цена продукта")
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        unique_together = ['id', 'title']
+
+
+class Supplier(models.Model):
+    name = models.CharField(max_length=50)
+    product = models.ForeignKey(Product, blank=True, null=True, related_name='supplier', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        unique_together = ['id', 'name']
+
+
+class Discount(models.Model):
+    discount = models.IntegerField()
+    product = models.ForeignKey(Product, blank=True, null=True, related_name='discount', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return str(self.discount)
+
+    class Meta:
+        unique_together = ['id', 'discount']
+
+
+class Category(models.Model):
+    title = models.CharField(max_length=50, verbose_name='Название категории')
+    description = models.CharField(max_length=150, verbose_name='Описание категории')
+    product = models.ForeignKey(Product, blank=True, null=True, related_name='category', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        unique_together = ['id', 'title']
+
+
+class Cart(models.Model):
+    session_key = models.CharField(max_length=999, blank=True, default='')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    total_cost = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f'{self.user}{self.session_key}'
+
+    def get_total(self):
+        items = CartContent.objects.filter(cart=self.id)
+        total = 0
+        for item in items:
+            total += item.product.price * item.qty
+        return total
+
+    def get_cart_content(self):
+        items = CartContent.objects.all()
+        return items
+
+
+class CartContent(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    qty = models.IntegerField(default=1)
+
